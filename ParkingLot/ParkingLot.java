@@ -8,7 +8,12 @@ enum VehicleType{
     Car,
     Bike,
     Truck
-} 
+}
+
+enum GateType{
+    Entry,
+    Exit
+}
 
 abstract class Vehicle{
     String number;
@@ -57,6 +62,7 @@ class Ticket{
     LocalDateTime entrytime;
     String floorid;
     String spotId;
+    String exitgate;
     Ticket(String ticketid,Vehicle vehicle){
       this.ticketid=ticketid;
       this.vehicle=vehicle;
@@ -149,6 +155,38 @@ class CASHpayment implements makePaymentStrategy{
     }
 }
 
+
+//gates
+abstract class Gate{
+    String id;
+    GateType gateType;
+    ParkingLot parkingLot;
+
+    Gate(String id, GateType gateType, ParkingLot parkingLot){
+        this.id=id;
+        this.gateType=gateType;
+        this.parkingLot=parkingLot;
+    }
+}
+class EntryGate extends Gate{
+    EntryGate(String id, GateType gateType, ParkingLot parkingLot){
+         super(id, gateType, parkingLot);
+    }
+      public Ticket enter(Vehicle vehicle){
+        return parkingLot.parkVehicle(vehicle);
+         
+      }
+ }
+class ExitGate extends Gate{
+    ExitGate(String id, GateType gateType, ParkingLot parkingLot){
+         super(id, gateType, parkingLot);
+    }
+    public double exit(Ticket ticket, makePaymentStrategy makepayment){
+        ticket.exitgate = id;
+         return parkingLot.unparkVehicle(ticket, makepayment);
+    }
+}
+
 //factory vehicle
 class VehicleFactory{
     public static Vehicle create(VehicleType type,String number){
@@ -199,6 +237,7 @@ public class ParkingLot {
         LocalDateTime exittime = LocalDateTime.now();
         double fee = paymentstrategy.calculatefee(ticket.entrytime, exittime);
         makepaymentstrategy.makePayment(fee);
+         System.out.println("Your exit gate will be "+ ticket.exitgate);
         // System.out.println("Your fee is "+fee);
         return fee;
        }   
@@ -213,13 +252,22 @@ public class ParkingLot {
         System.out.println("No spot available for"+ vehicle.type);
         return null;
        }
+         synchronized(spot){//lock only this spot
+             if(spot.isOccupied){
+                //someone else took it find another
+                return parkVehicle(vehicle);
+             }
+         }
+       
        spot.isOccupied=true;
        spot.vehicle=vehicle;
        Ticket ticket = new Ticket("TKT"+UUID.randomUUID(),vehicle);
        ticket.spotId = spot.id;
        ticket.floorid = spot.floorid;
-       System.out.println("Vehicle Parked! Ticket nos is :"+ ticket.ticketid + ".Your " + ticket.vehicle.type + " Parked at floor "+ ticket.floorid + " | " + ticket.spotId);
+       System.out.println("Vehicle Parked! Ticket nos is :"+ ticket.ticketid + ".Your " + ticket.vehicle.type + " Parked at floor "+ ticket.floorid + " | " + ticket.spotId
+       );
        return ticket;
+    
     }
 
 
@@ -239,15 +287,19 @@ public static void main(String[] args){
     // Vehicle vehicle = VehicleFactory.create(VehicleType.Car,"UP-1010-23");
     Vehicle vehicle2 = VehicleFactory.create(VehicleType.Truck, "MH-2020-11");
 
+    //create gates
+    EntryGate entryGate = new EntryGate("G1", GateType.Entry, parkingLot);
+    ExitGate exitGate = new ExitGate("G2", GateType.Exit, parkingLot);
+
     // Ticket t1 = parkingLot.parkVehicle(car);
-    Ticket t2 = parkingLot.parkVehicle(vehicle2);
+    Ticket t2 = entryGate.enter(vehicle2);
 
     try {
     Thread.sleep(2000);
 } catch (InterruptedException e) {
     e.printStackTrace();
 }
-    
-    parkingLot.unparkVehicle(t2, new UPIpayment());
+   exitGate.exit(t2, new UPIpayment()); 
+    // parkingLot.unparkVehicle(t2, new UPIpayment());
 }
 }
