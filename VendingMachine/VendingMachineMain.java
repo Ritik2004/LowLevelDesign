@@ -28,10 +28,16 @@ class NoCoinState extends VendingMachineState{
     @Override
     void insertCoin(VendingMachine vm, int amount) {
         // logic to insert coin
+        PaymentStrategy strategy = vm.getPaymentstrategy();
+        boolean success = strategy.pay(amount);
+        if(success){
         vm.addAmount(amount);
-        System.out.println("Coint Inserted:" + amount);
+        System.out.println("Coin Inserted:" + amount);
         vm.setState(vm.getHasCoinState());
+    } else{
+        System.out.println("Payment failed");
     }
+}
 
     @Override
     void selectItem(VendingMachine vm,String slotid) {
@@ -73,7 +79,7 @@ class HasCoinState extends VendingMachineState{
          return;
        }
        vm.setSelectedslot(slot);
-       System.out.print("Item selected:"+ slot.getItem().getName());
+       System.out.println("Item selected:"+ slot.getItem().getName());
        vm.setState(vm.getDispenseState());
     }
 
@@ -197,6 +203,16 @@ class VendingMachine{
         slots = new HashMap<>();
          insertedAmount = 0;
     }
+    private PaymentStrategy paymentStrategy;
+
+//setter
+
+public void setPaymentstrategy(PaymentStrategy strategy){
+  this.paymentStrategy = strategy;
+}
+public PaymentStrategy getPaymentstrategy(){
+    return paymentStrategy;
+} 
     //state management
     public void setState(VendingMachineState state){
         this.currentstate = state;
@@ -242,14 +258,40 @@ class VendingMachine{
   }
 }
 
+interface PaymentStrategy{
+    boolean pay(double amount);
+}
+
+class CoinPayment implements PaymentStrategy{
+    public boolean pay(double amount){
+         System.out.println("Paid "+ amount+ "via Coin");
+        return true;
+        }
+}
+
+class CardPayment implements PaymentStrategy{
+    public boolean pay(double amount){
+         System.out.println("Paid "+ amount+ "via Card");
+        return true;
+        }
+}
+
+class UpiPayment implements PaymentStrategy{
+    public boolean pay(double amount){
+         System.out.println("Paid "+ amount+ "via Upi");
+        return true;
+        }
+}
+
+
 public class VendingMachineMain{
     public static void main(String[] args){
          VendingMachine vm = new VendingMachine();
           Item chips = new Item("Chips",10,1);
           Slot slota = new Slot(chips, 5);
           vm.addSlot("A", slota);
-
-          vm.insertCoin(20);
+          vm.setPaymentstrategy(new CoinPayment());
+          vm.insertCoin(10);
           vm.selectItem("A");
           vm.dispenseItem();
     }
