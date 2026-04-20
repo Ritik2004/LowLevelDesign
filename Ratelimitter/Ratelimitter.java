@@ -94,7 +94,7 @@ class RatelimitterMain {
      RateLimiterConfig config = tierConfigs.get(user.getTier());
        return strategy.isAllowed(user.getName(), config);
     }
-} 
+}  
 
 class Ratelimitter{
     public static void main(String[] args) {
