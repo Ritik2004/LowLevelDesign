@@ -1,5 +1,9 @@
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 enum State{
     Idle,
@@ -26,35 +30,62 @@ class Floor{
     private int floorNos;
     private boolean upButton;
     private boolean downButton;
+    private ElevatorController controller;
 
-    Floor(int floorNos){
+    Floor(int floorNos,ElevatorController controller){
         this.floorNos=floorNos;
+        this.controller = controller;
     }
     public void pressUp(){
         upButton = true;
+        ElevatorRequest request = new ElevatorRequest(floorNos,Direction.Up);
+        controller.requestElevator(request);
     }
     public void pressDown(){
         downButton = true;
+        ElevatorRequest request = new ElevatorRequest(floorNos,Direction.Down);
+        controller.requestElevator(request);
     }
     public int getFloor(){
         return floorNos;
     }
 }
-
+class ElevatorPanel{
+    public int pressFloor(int floor){
+        return floor;
+    }  
+}
 
 class Elevator{
     int id;
-    int currentfloor;
-    private State state;
+    private volatile int currentfloor;
+    ElevatorPanel panel;
+    private volatile State state;
     private Door door;
+    private BlockingQueue<Integer> requests;
         public Elevator(int id) {
         this.id = id;
         this.currentfloor = 1;
         this.state = State.Idle;
         this.door = new Door();
+        this.panel = new ElevatorPanel();
+        this.requests = new LinkedBlockingQueue<>();
     }
 
-    public void MoveTofloor(int floor){
+    public void addRequest(int floor){
+        requests.add(floor);
+        System.out.println("Elevator " + id + " received request to floor " + floor);
+    }
+    public void processRequests(){
+        while(requests.size()>0){
+            int floor = requests.poll();
+            System.out.println("Elevator " + id + " processing request for floor " + floor);
+
+            MoveTofloor(floor);
+        }
+    }
+
+    public synchronized void MoveTofloor(int floor){
         if(floor>currentfloor){
             setState(state.MovingUp);
         }
@@ -88,15 +119,13 @@ class Elevator{
 
 class ElevatorRequest{
     private int sourceFloor;
-    private int destinationFloor;
+    // private int destinationFloor;
     private Direction direction;
-    ElevatorRequest(int sourceFloor, int destinationFloor,Direction direction){
+    ElevatorRequest(int sourceFloor,Direction direction){
         this.sourceFloor = sourceFloor;
-        this.destinationFloor = destinationFloor;
         this.direction = direction;
     }
    public int getSourceFloor() { return sourceFloor; }
-    public int getDestinationFloor() { return destinationFloor; }
     public Direction getDirection() { return direction; }
 }
 
@@ -127,10 +156,8 @@ class ElevatorController{
   }
   public void processElevator(Elevator elevator, ElevatorRequest request){
       elevator.closeDoor();
-      elevator.MoveTofloor(request.getSourceFloor());
-      elevator.openDoor();
-      elevator.closeDoor();
-      elevator.MoveTofloor(request.getDestinationFloor());
+      elevator.addRequest(request.getSourceFloor());
+      elevator.processRequests();
       elevator.openDoor();
       elevator.setState(State.Idle);
   }
@@ -143,7 +170,15 @@ public class ElevatorMain {
          Elevator elevator2 = new Elevator(2);
          controller.addElevator(elevator1);
         //  controller.addElevator(elevator2);
-         ElevatorRequest request = new ElevatorRequest(1,5,Direction.Up);
-         controller.requestElevator(request);
+            Floor floor1 = new Floor(1,controller);
+            // Floor floor2 = new Floor(2,controller);
+            // Floor floor3 = new Floor(3,controller);
+            floor1.pressUp();
+            // floor2.pressDown();
+            // floor3.pressUp();
+
+            int destinationfloor = elevator1.panel.pressFloor(3);
+            elevator1.addRequest(destinationfloor);
+            elevator1.processRequests(); 
     }
 }

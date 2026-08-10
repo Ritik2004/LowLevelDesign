@@ -71,7 +71,7 @@ class Ticket{
 
 }
 
-class ParkingFloor{
+class ParkingFloor{ 
     String id;
     List<ParkingSpot> spots;
        ParkingFloor(String id){

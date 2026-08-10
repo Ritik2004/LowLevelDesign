@@ -7,9 +7,11 @@ enum UserTier{
 class RateLimiterConfig{
     private int maxrequests;
     private long maxwindowsize;
-   RateLimiterConfig(int maxrequests, long maxwindowsize){
+    private long refillrate;
+   RateLimiterConfig(int maxrequests, long maxwindowsize, long refillrate){
     this.maxrequests=maxrequests;
     this.maxwindowsize=maxwindowsize;
+    this.refillrate=refillrate;
    }
    public int getmaxrequests(){
     return maxrequests;
@@ -17,6 +19,9 @@ class RateLimiterConfig{
    public long getmaxwindowsize(){
     return maxwindowsize;
    }
+    public long getrefillrate(){
+     return refillrate;
+    }
 }
 class User{
     private String userId;
@@ -76,6 +81,37 @@ class SlidingWindowlog implements RatelimiterStrategy{
           return false;
      }
 }
+class TokenBucketStrategy implements RatelimiterStrategy{
+    public class Bucket{
+       int tokens;
+       Long lastrefilltime;
+       Bucket(int tokens, Long lastrefilltime){
+            this.tokens=tokens;
+            this.lastrefilltime=lastrefilltime;
+       }
+    }
+       Map<String, Bucket> map = new HashMap<>();
+         
+       public boolean isAllowed(String userId, RateLimiterConfig config){
+         Long now = System.currentTimeMillis();
+         Bucket bucket = map.get(userId);
+         if(bucket == null){
+            bucket = new Bucket(config.getmaxrequests(),now);
+            map.put(userId,bucket);
+         }
+         long elapsedtime = (now - bucket.lastrefilltime)/ 1000; // convert milliseconds to seconds
+         bucket.tokens = Math.min(config.getmaxrequests(), bucket.tokens + (int)(elapsedtime * config.getrefillrate()));
+         bucket.lastrefilltime = now;
+
+         if(bucket.tokens>0){
+            bucket.tokens--;
+            return true;
+         }
+            return false;
+       }
+    }
+
+
 class RatelimitterMain {
    private RatelimiterStrategy strategy;
    private Map<UserTier, RateLimiterConfig> tierConfigs;
@@ -98,10 +134,10 @@ class RatelimitterMain {
 
 class Ratelimitter{
     public static void main(String[] args) {
-        RateLimiterConfig freeconfig = new RateLimiterConfig(3,10000);
-        RateLimiterConfig premiumconfig = new RateLimiterConfig(10,10000);
-            
-        RatelimitterMain ratelimitter = new RatelimitterMain(new FixwindowStrategy());
+        RateLimiterConfig freeconfig = new RateLimiterConfig(3,10000,1000);
+        RateLimiterConfig premiumconfig = new RateLimiterConfig(10,10000,1000);
+
+        RatelimitterMain ratelimitter = new RatelimitterMain(new TokenBucketStrategy());
         ratelimitter.addTierconfig(UserTier.FREE, freeconfig);
         ratelimitter.addTierconfig(UserTier.PREMIUM, premiumconfig);
 
