@@ -143,7 +143,7 @@ enum BookingStatus{
         return this.startTime;
     }
   }
-
+ 
   class Cinema{
        String cinemaId;
        String name;
