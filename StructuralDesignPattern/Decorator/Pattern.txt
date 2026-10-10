@@ -1,0 +1,6 @@
+It is a structural design pattern that allows us to add new behavious or features to an object dynamically at runtime 
+Wrap an object into another of the same type to add behaviour at runtime without modifying the original.
+
+Decorator implements the interface(IS-A) and hold instance of it(HAS-A)
+
+We shloud use this to avoid inheritance as it would explode with lot of subclasses for example pizza with cheese,olives,paneer.
