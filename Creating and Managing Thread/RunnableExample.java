@@ -32,13 +32,17 @@ public class RunnableExample {
         EmailTask emailTask = new EmailTask();
         Thread smsThread = new Thread(smsTask);
         Thread emailThread = new Thread(emailTask);
+        Thread messagetask = new Thread(() -> System.out.println("Message sent successfully!"));
         System.out.println("Starting SMS thread...");
         smsThread.start();
         System.out.println("Starting Email thread...");
         emailThread.start();
+        System.out.println("Starting Message thread...");
+        messagetask.start();
         try{
             smsThread.join();
-                emailThread.join();
+            emailThread.join();
+            messagetask.join(); 
         }
         catch(InterruptedException e){
             System.out.println("Main thread interrupted: " + e.getMessage());
